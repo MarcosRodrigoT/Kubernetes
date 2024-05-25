@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tensorflow
+  labels:
+    app: tensorflow
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: tensorflow
+  template:
+    metadata:
+      labels:
+        app: tensorflow
+    spec:
+      containers:
+      - name: tensorflow
+        image: tensorflow/tensorflow:latest-gpu
+        # command: ["bash"]
+        # The containers exit as soon as they finish their command, this is a trick to keep them up and running
+        command: ["/bin/bash", "-c", "--"]
+        args: ["while true; do sleep 10; done;"]
+        resources:
+          limits:
+            nvidia.com/gpu: 2
