@@ -17,10 +17,28 @@ spec:
       containers:
       - name: pytorch
         image: pytorch/pytorch:latest
+
+        # This runs a bash shell, but it finishes as soon as it starts
         # command: ["bash"]
-        # The containers exit as soon as they finish their command, this is a trick to keep them up and running
+        
+        # This is a trick to keep the pod up and running
         command: ["/bin/bash", "-c", "--"]
         args: ["while true; do sleep 10; done;"]
+
+        # This runs a python file
+        # command: ["python", "/workspace/main.py"]
+
+        # This makes sure that we can write to the mounted volume
+        # command: ["/bin/touch", "/workspace/escrito_desde_el_pod"]
+
         resources:
           limits:
             nvidia.com/gpu: 2
+        volumeMounts:
+        - mountPath: /workspace
+          name: data
+      volumes:
+      - name: data
+        hostPath:
+          path: /workspace
+          type: Directory
