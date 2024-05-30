@@ -1,2 +1,6 @@
+.vscode
+
 *data/
 venv/
+
+*_pycache_*

@@ -1,20 +1,30 @@
+import os
 import torch
-import torch.nn as nn
-import torch.optim as optim
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
+
+LOCAL_RANK = int(os.environ["LOCAL_RANK"])
 
 
-class CNN(nn.Module):
+def setup():
+    """Initialize the process group"""
+    torch.distributed.init_process_group("nccl")
+    torch.cuda.set_device(LOCAL_RANK)
+
+def cleanup():
+    """Destroy the process group"""
+    torch.distributed.destroy_process_group()
+
+
+class CNN(torch.nn.Module):
     """Define the CNN model"""
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3)
-        self.fc1 = nn.Linear(64 * 3 * 3, 64)
-        self.fc2 = nn.Linear(64, 10)
+        self.conv1 = torch.nn.Conv2d(1, 32, kernel_size=3)
+        self.pool = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
+        self.conv2 = torch.nn.Conv2d(32, 64, kernel_size=3)
+        self.conv3 = torch.nn.Conv2d(64, 64, kernel_size=3)
+        self.fc1 = torch.nn.Linear(64 * 3 * 3, 64)
+        self.fc2 = torch.nn.Linear(64, 10)
 
     def forward(self, x):
         x = torch.relu(self.conv1(x))
@@ -28,11 +38,11 @@ class CNN(nn.Module):
         return x
 
 
-def train(model, train_loader, criterion, optimizer, epoch, device='cpu'):
+def train(model, train_loader, criterion, optimizer, epoch):
     """Train the model"""
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)  # Move data to GPU if available
+        data, target = data.to(LOCAL_RANK), target.to(LOCAL_RANK)  # Move data to GPU if available
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, target)
@@ -46,14 +56,14 @@ def train(model, train_loader, criterion, optimizer, epoch, device='cpu'):
             )
 
 
-def test(model, test_loader, criterion, device):
+def test(model, test_loader, criterion):
     """Evaluate the model"""
     model.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
-            data, target = data.to(device), target.to(device)  # Move data to GPU if available
+            data, target = data.to(LOCAL_RANK), target.to(LOCAL_RANK)  # Move data to GPU if available
             output = model(data)
             test_loss += criterion(output, target).item()
             pred = output.argmax(dim=1, keepdim=True)
@@ -67,8 +77,8 @@ def test(model, test_loader, criterion, device):
 
 
 def main():
-    # Check if GPU is available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Set up distributed training
+    setup()
 
     # Define transformations for the training and testing sets
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
@@ -76,22 +86,28 @@ def main():
     # Load the MNIST dataset
     train_dataset = datasets.MNIST(root="./data", train=True, download=True, transform=transform)
     test_dataset = datasets.MNIST(root="./data", train=False, download=True, transform=transform)
+    
+    # Set datasamplers for datasets
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
 
     # Set dataloaders for datasets
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64000, sampler=train_sampler)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=1000, shuffle=False)
 
     # Create model and move it to GPU if available
-    model = CNN().to(device)
+    model = CNN().to(LOCAL_RANK)
 
     # Define the loss function and optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # Run training and testing
     for epoch in range(1, 10):
-        train(model, train_loader, criterion, optimizer, epoch, device)
-        test(model, test_loader, criterion, device)
+        train(model, train_loader, criterion, optimizer, epoch)
+        test(model, test_loader, criterion)
+    
+    # Close distributed training
+    cleanup()
 
 
 if __name__ == "__main__":
