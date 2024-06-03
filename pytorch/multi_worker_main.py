@@ -38,6 +38,25 @@ class CNN(torch.nn.Module):
         return x
 
 
+def save_checkpoint(model, epoch, path='checkpoint.pt'):
+    checkpoint = {
+        "model": model.module.state_dict(),
+        "epochs": epoch,
+    }
+    torch.save(checkpoint, path)
+    print(f"Epoch {epoch} | Training checkpoint saved at {path}")
+
+
+def load_checkpoint(model, path='checkpoint.pt'):
+    first_epoch = 0
+    if os.path.isfile(path):
+        checkpoint = torch.load(path, map_location=f"cuda:{LOCAL_RANK}")
+        model.load_state_dict(checkpoint["model"])
+        first_epoch = checkpoint["epochs"]
+        print(f"Resuming training from snapshot at epoch {first_epoch}")
+    return model, first_epoch
+
+
 def train(model, train_loader, criterion, optimizer, epoch):
     """Train the model"""
     model.train()
@@ -88,7 +107,7 @@ def main():
     test_dataset = datasets.MNIST(root="./data", train=False, download=True, transform=transform)
     
     # Set datasamplers for datasets
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, rank=LOCAL_RANK)
 
     # Set dataloaders for datasets
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64000, sampler=train_sampler)
@@ -96,15 +115,18 @@ def main():
 
     # Create model and move it to GPU if available
     model = CNN().to(LOCAL_RANK)
+    model, first_epoch = load_checkpoint(model)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[LOCAL_RANK])
 
     # Define the loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # Run training and testing
-    for epoch in range(1, 10):
+    for epoch in range(first_epoch, 50):
         train(model, train_loader, criterion, optimizer, epoch)
         test(model, test_loader, criterion)
+        save_checkpoint(model, epoch)
     
     # Close distributed training
     cleanup()

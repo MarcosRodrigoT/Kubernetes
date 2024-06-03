@@ -1,3 +1,5 @@
+# Use 'ifconfig' to find the correct user interface and put it here
+export NCCL_SOCKET_IFNAME=eno1  # Use this only if you encounter connection issues. Otherwise, comment it
 torchrun \
     --nproc-per-node=2 \
     --nnodes=2 \
