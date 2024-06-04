@@ -10,3 +10,7 @@ venv/
 *ckpts/
 *logs/
 *.keras
+=======
+
+# Pytorch
+*.pt

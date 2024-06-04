@@ -110,7 +110,7 @@ def main():
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, rank=LOCAL_RANK)
 
     # Set dataloaders for datasets
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64000, sampler=train_sampler)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32000, sampler=train_sampler)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=1000, shuffle=False)
 
     # Create model and move it to GPU if available
