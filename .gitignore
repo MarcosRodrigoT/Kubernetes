@@ -1,6 +1,12 @@
+# VS Code
 .vscode
 
+# Python
 *data/
 venv/
-
 *_pycache_*
+
+# TensorFlow
+*ckpts/
+*logs/
+*.keras
