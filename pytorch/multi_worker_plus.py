@@ -172,7 +172,10 @@ def main():
     # Define transformations for the training and testing sets
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    # Load the CIFAR10 dataset. Download from https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz and uncompress in 'data/cifar10'
+    # Load the CIFAR10 dataset. First you should:
+    #   1. Download the dataset from https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
+    #   2. Uncompress it with: tar -xvzf cifar-10-python.tar.gz
+    #   3. Place the files on 'data/cifar10'
     train_dataset = CIFAR10Dataset(data_dir='./data/cifar10', train=True, transform=transform)
     test_dataset = CIFAR10Dataset(data_dir='./data/cifar10', train=False, transform=transform)
     
