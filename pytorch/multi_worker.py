@@ -9,8 +9,6 @@ To launch multi-worker training in PyTorch, you should:
             --nproc-per-node=<num-gpus> \
             --nnodes=<num-nodes> \
             --node-rank=0 \
-            --rdzv-id=<id> \
-            --rdzv-backend=c10d \
             --rdzv-endpoint=<ip-address>:<port> \
             multi_worker.py  # Put here additional arguments to your script (if any): --arg1 --arg2...
             
@@ -18,9 +16,7 @@ To launch multi-worker training in PyTorch, you should:
             -nproc-per-node: number of GPUs on the current PC. You may have PCs with different number of GPUs.
             -nnodes: number of nodes (PCs).
             -node-rank: id for the current node. Use 0 for the master node (choose any PC to become master) and 1, 2, ... for the rest.
-            -rdzv-id: id of the Python process. You can use 0.
-            -rdzv-backend: backend for the communication process. Use c10d.
-            -rdzv-endpoint: <ip-address>:<port> of master node. Put ip address (or DNS name) and port (default is 29400) of master node.
+            -rdzv-endpoint: ip address (or DNS name) and port (default is 29400) of master node. Only for multi-node training.
             
     3. If connection fails, NCCL might have failed in automatically searching the network interface. Use 'ifconfig' to find the correct
        network interface (probably 'eth0' or 'eno1') and run the following command:
@@ -109,6 +105,7 @@ def test(model, test_loader, criterion):
 
 
 def main():
+    
     # Set up distributed training
     setup()
 
