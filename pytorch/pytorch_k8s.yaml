@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pytorch-service
+spec:
+  clusterIP: None
+  selector:
+    app: pytorch-master
+  ports:
+    - protocol: TCP
+      port: 29400
+      targetPort: 29400
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pytorch-master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pytorch-master
+  template:
+    metadata:
+      labels:
+        app: pytorch-master
+    spec:
+      containers:
+      - name: pytorch
+        image: pytorch/pytorch:latest
+        command: ["/bin/bash", "-c", "--"]
+        args: ["while true; do sleep 10; done;"]
+        # command: ["/workspace/multiworker.sh"]
+        env:
+        - name: NODE_RANK
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['node-rank']
+        - name: MASTER_ADDR
+          value: "localhost"
+        - name: MASTER_PORT
+          value: "29400"
+        ports:
+        - containerPort: 29400
+
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+        volumeMounts:
+        - mountPath: /workspace
+          name: data
+      volumes:
+      - name: data
+        hostPath:
+          path: /workspace
+          type: Directory
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pytorch-worker
+  # labels:
+  #   app: pytorch-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pytorch-worker
+  template:
+    metadata:
+      labels:
+        app: pytorch-worker
+    spec:
+      containers:
+      - name: pytorch
+        image: pytorch/pytorch:latest
+
+        # This runs a bash shell, but it finishes as soon as it starts
+        # command: ["bash"]
+        
+        # This is a trick to keep the pod up and running
+        command: ["/bin/bash", "-c", "--"]
+        args: ["while true; do sleep 10; done;"]
+        # command: ["/workspace/multiworker.sh"]
+
+        # This runs a python file
+        # command: ["python", "/workspace/main.py"]
+
+        # This makes sure that we can write to the mounted volume
+        # command: ["/bin/touch", "/workspace/escrito_desde_el_pod"]
+
+        env:
+        - name: NODE_RANK
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['node-rank']
+        - name: MASTER_ADDR
+          value: "pytorch-service"
+        - name: MASTER_PORT
+          value: "29400"
+        ports:
+        - containerPort: 29400
+
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+        volumeMounts:
+        - mountPath: /workspace
+          name: data
+      volumes:
+      - name: data
+        hostPath:
+          path: /workspace
+          type: Directory

@@ -1,3 +1,35 @@
+"""
+To launch multi-worker training in PyTorch, you should:
+
+    1. Clone your code on all the PCs (nodes).
+    
+    2. Run the following command on all the nodes:
+    
+        torchrun \
+            --nproc-per-node=<num-gpus> \
+            --nnodes=<num-nodes> \
+            --node-rank=0 \
+            --rdzv-id=<id> \
+            --rdzv-backend=c10d \
+            --rdzv-endpoint=<ip-address>:<port> \
+            multi_worker.py  # Put here additional arguments to your script (if any): --arg1 --arg2...
+            
+        where...
+            -nproc-per-node: number of GPUs on the current PC. You may have PCs with different number of GPUs.
+            -nnodes: number of nodes (PCs).
+            -node-rank: id for the current node. Use 0 for the master node (choose any PC to become master) and 1, 2, ... for the rest.
+            -rdzv-id: id of the Python process. You can use 0.
+            -rdzv-backend: backend for the communication process. Use c10d.
+            -rdzv-endpoint: <ip-address>:<port> of master node. Put ip address (or DNS name) and port (default is 29400) of master node.
+            
+    3. If connection fails, NCCL might have failed in automatically searching the network interface. Use 'ifconfig' to find the correct
+       network interface (probably 'eth0' or 'eno1') and run the following command:
+    
+            export NCCL_SOCKET_IFNAME=<net-interface>
+            
+Additional info: https://pytorch.org/tutorials/intermediate/ddp_series_multinode.html
+"""
+
 import os
 import torch
 from torchvision import datasets, transforms
@@ -36,25 +68,6 @@ class CNN(torch.nn.Module):
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
         return x
-
-
-def save_checkpoint(model, epoch, path='checkpoint.pt'):
-    checkpoint = {
-        "model": model.module.state_dict(),
-        "epochs": epoch,
-    }
-    torch.save(checkpoint, path)
-    print(f"Epoch {epoch} | Training checkpoint saved at {path}")
-
-
-def load_checkpoint(model, path='checkpoint.pt'):
-    first_epoch = 0
-    if os.path.isfile(path):
-        checkpoint = torch.load(path, map_location=f"cuda:{LOCAL_RANK}")
-        model.load_state_dict(checkpoint["model"])
-        first_epoch = checkpoint["epochs"]
-        print(f"Resuming training from snapshot at epoch {first_epoch}")
-    return model, first_epoch
 
 
 def train(model, train_loader, criterion, optimizer, epoch):
@@ -115,7 +128,6 @@ def main():
 
     # Create model and move it to GPU if available
     model = CNN().to(LOCAL_RANK)
-    model, first_epoch = load_checkpoint(model)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[LOCAL_RANK])
 
     # Define the loss function and optimizer
@@ -123,10 +135,9 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # Run training and testing
-    for epoch in range(first_epoch, 50):
+    for epoch in range(0, 50):
         train(model, train_loader, criterion, optimizer, epoch)
         test(model, test_loader, criterion)
-        save_checkpoint(model, epoch)
     
     # Close distributed training
     cleanup()
