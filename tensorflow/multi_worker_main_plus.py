@@ -1,6 +1,7 @@
 """
 Same code as tensorflow/multi_worker_main.py with the addition of:
 
+- Custom dataset
 - Callbacks:
     - Checkpointing
     - Learning rate scheduling
@@ -10,6 +11,7 @@ Same code as tensorflow/multi_worker_main.py with the addition of:
 
 import os
 import json
+import pickle
 import tensorflow as tf
 import numpy as np
 
@@ -43,21 +45,48 @@ export TF_CONFIG='{
 # Then execute this "python multi_worker_main.py" in each node (PC)
 
 
-def mnist_dataset(batch_size):
-    (x_train, y_train), _ = tf.keras.datasets.mnist.load_data()
-    # The `x` arrays are in uint8 and have values in the [0, 255] range.
-    # You need to convert them to float32 with values in the [0, 1] range.
-    x_train = x_train / np.float32(255)
-    y_train = y_train.astype(np.int64)
-    train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(60000).repeat().batch(batch_size)
-    return train_dataset
+def unpickle(file):
+    with open(file, "rb") as fo:
+        dict = pickle.load(fo, encoding="bytes")
+    return dict
+
+
+def load_cifar10(data_dir):
+    def load_batch(file):
+        batch = unpickle(file)
+        data = batch[b"data"]
+        labels = batch[b"labels"]
+        return data, labels
+
+    # Load training data
+    train_data = []
+    train_labels = []
+    for i in range(1, 6):
+        data, labels = load_batch(os.path.join(data_dir, f"data_batch_{i}"))
+        train_data.append(data)
+        train_labels.extend(labels)
+
+    train_data = np.concatenate(train_data)
+    train_data = train_data.reshape(-1, 32, 32, 3).astype("float32") / 255.0  # Normalize data
+    train_labels = np.array(train_labels)
+
+    # Load test data
+    test_data, test_labels = load_batch(os.path.join(data_dir, "test_batch"))
+    test_data = test_data.reshape(-1, 32, 32, 3).astype("float32") / 255.0  # Normalize data
+    test_labels = np.array(test_labels)
+
+    # Create TensorFlow datasets
+    train_ds = tf.data.Dataset.from_tensor_slices((train_data, train_labels)).shuffle(50000).batch(32)
+    test_ds = tf.data.Dataset.from_tensor_slices((test_data, test_labels)).batch(32)
+
+    return train_ds, test_ds
 
 
 def build_and_compile_cnn_model():
     model = tf.keras.Sequential(
         [
-            tf.keras.layers.InputLayer(input_shape=(28, 28)),
-            tf.keras.layers.Reshape(target_shape=(28, 28, 1)),
+            tf.keras.layers.InputLayer(input_shape=(32, 32, 3)),
+            tf.keras.layers.Reshape(target_shape=(32, 32, 3)),
             tf.keras.layers.Conv2D(32, 3, activation="relu"),
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(128, activation="relu"),
@@ -105,7 +134,7 @@ print(f"{num_workers=}")
 strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
 global_batch_size = per_worker_batch_size * num_workers
-multi_worker_dataset = mnist_dataset(global_batch_size)
+train_ds, test_ds = load_cifar10("/home/mrt/Projects/Kubernetes/data/cifar10")
 
 with strategy.scope():
     # Model building/compiling needs to be within `strategy.scope()`.
@@ -120,7 +149,10 @@ callbacks = [
 ]
 
 # Train the model
-multi_worker_model.fit(multi_worker_dataset, epochs=5, steps_per_epoch=70, callbacks=callbacks)
+multi_worker_model.fit(train_ds, epochs=5, steps_per_epoch=70, callbacks=callbacks)
+
+# Evaluate the model
+multi_worker_model.evaluate(test_ds)
 
 # Save the model only on the "master" node
 if tf_config["task"]["index"] == 0:
