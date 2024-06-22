@@ -134,7 +134,7 @@ print(f"{num_workers=}")
 strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
 global_batch_size = per_worker_batch_size * num_workers
-train_ds, test_ds = load_cifar10("/home/mrt/Projects/Kubernetes/data/cifar10")
+train_ds, test_ds = load_cifar10(f"../data/cifar10")
 
 with strategy.scope():
     # Model building/compiling needs to be within `strategy.scope()`.
@@ -142,8 +142,8 @@ with strategy.scope():
 
 # Callbacks
 callbacks = [
-    tf.keras.callbacks.TensorBoard(log_dir="tensorflow/logs"),
-    tf.keras.callbacks.ModelCheckpoint(filepath="tensorflow/ckpts/epoch_{epoch}.ckpt", save_weights_only=True, verbose=1),
+    tf.keras.callbacks.TensorBoard(log_dir="logs"),
+    tf.keras.callbacks.ModelCheckpoint(filepath="ckpts/epoch_{epoch}.ckpt", save_weights_only=True, verbose=1),
     tf.keras.callbacks.LearningRateScheduler(decay),
     PrintLR(),
 ]
@@ -156,4 +156,4 @@ multi_worker_model.evaluate(test_ds)
 
 # Save the model only on the "master" node
 if tf_config["task"]["index"] == 0:
-    multi_worker_model.save("tensorflow/my_model.keras")
+    multi_worker_model.save("my_model.keras")
