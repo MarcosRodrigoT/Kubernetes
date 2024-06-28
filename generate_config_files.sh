@@ -197,7 +197,6 @@ kind: Service
 metadata:
   name: pytorch-service
 spec:
-  clusterIP: None
   selector:
     app: pytorch-master
   ports:
@@ -227,12 +226,16 @@ spec:
         command: [\"/bin/bash\", \"-c\", \"--\"]
         args: [\"while true; do sleep 10; done;\"]
         env:
+        - name: NNODES
+          value: \"$NODES\"
+        - name: NPROC_PER_NODE
+          value: \"$GPUS\"
         - name: NODE_RANK
           value: \"0\"
         - name: MASTER_ADDR
-          value: \"localhost\"
-        - name: MASTER_PORT
-          value: \"29400\"
+          value: \"\$(PYTORCH_SERVICE_SERVICE_HOST):\$(PYTORCH_SERVICE_PORT_29400_TCP_PORT)\"
+        - name: PYTORCH_CALL
+          value: \"torchrun --nnodes $NODES --nproc-per-node $GPUS --node-rank 0 --rdzv-endpoint \$(PYTORCH_SERVICE_SERVICE_HOST):\$(PYTORCH_SERVICE_PORT_29400_TCP_PORT)\"
         ports:
         - containerPort: 29400
         resources:
@@ -272,10 +275,16 @@ spec:
         command: [\"/bin/bash\", \"-c\", \"--\"]
         args: [\"while true; do sleep 10; done;\"]
         env:
+        - name: NNODES
+          value: \"$NODES\"
+        - name: NPROC_PER_NODE
+          value: \"$GPUS\"
         - name: NODE_RANK
           value: \"${i}\"
         - name: MASTER_ADDR
-	  value: \"\$(PYTORCH_SERVICE_SERVICE_HOST):\$(PYTORCH_SERVICE_PORT_29400_TCP_PORT)\"
+          value: \"\$(PYTORCH_SERVICE_SERVICE_HOST):\$(PYTORCH_SERVICE_PORT_29400_TCP_PORT)\"
+        - name: PYTORCH_CALL
+          value: \"torchrun --nnodes $NODES --nproc-per-node $GPUS --node-rank ${i} --rdzv-endpoint \$(PYTORCH_SERVICE_SERVICE_HOST):\$(PYTORCH_SERVICE_PORT_29400_TCP_PORT)\"
         ports:
         - containerPort: 29400
         resources:

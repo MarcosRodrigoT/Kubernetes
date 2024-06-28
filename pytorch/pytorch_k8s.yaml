@@ -3,7 +3,6 @@ kind: Service
 metadata:
   name: pytorch-service
 spec:
-  clusterIP: None
   selector:
     app: pytorch-master
   ports:
