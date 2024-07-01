@@ -7,4 +7,35 @@
 # Chart config reference:   https://zero-to-jupyterhub.readthedocs.io/en/stable/resources/reference.html
 # Chart default values:     https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/HEAD/jupyterhub/values.yaml
 # Available chart versions: https://hub.jupyter.org/helm-chart/
-#
+
+singleuser:
+  # Defines the default image
+  image:
+    name: jupyter/minimal-notebook
+    tag: x86_64-ubuntu-22.04
+  profileList:
+
+    - display_name: "Minimal environment"
+      description: "To avoid too much bells and whistles: Python."
+      default: true
+
+    - display_name: "Tensorflow 1 GPU"
+      description: "If you want the additional bells and whistles: Python, and TensorFlow with 1 GPU."
+      kubespawner_override:
+        image: jupyter/tensorflow-notebook:x86_64-ubuntu-22.04
+        extra_resource_limits:
+          nvidia.com/gpu: "1"
+
+    - display_name: "Tensorflow 2 GPUs"
+      description: "If you want the additional bells and whistles: Python, and TensorFlow with 2 GPUs."
+      kubespawner_override:
+        image: jupyter/tensorflow-notebook:x86_64-ubuntu-22.04
+        extra_resource_limits:
+          nvidia.com/gpu: "2"
+    
+    # - display_name: "COMODIA"
+    #   description: "Custom Docker image with 2 GPUs."
+    #   kubespawner_override:
+    #     image: marcosrodrigot/comodia:latest
+    #     extra_resource_limits:
+    #       nvidia.com/gpu: "2"
