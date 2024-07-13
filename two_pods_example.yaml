@@ -11,6 +11,15 @@ spec:
     resources:
       limits:
         nvidia.com/gpu: 1
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - mountPath: /workspace
+      name: my-hostpath
+  volumes:
+  - name: my-hostpath
+    hostPath:
+      path: /home/mrt/Projects/Kubernetes
+      type: Directory
   nodeSelector:
     kubernetes.io/hostname: minerva
   tolerations:
@@ -37,6 +46,15 @@ spec:
     resources:
       limits:
         nvidia.com/gpu: 1
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - mountPath: /workspace
+      name: my-hostpath
+  volumes:
+  - name: my-hostpath
+    hostPath:
+      path: /home/mrt/Projects/Kubernetes
+      type: Directory
   nodeSelector:
     kubernetes.io/hostname: tetis
   tolerations:
