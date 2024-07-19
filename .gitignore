@@ -13,3 +13,6 @@ venv/
 
 # Pytorch
 *.pt
+
+# Kubernetes
+*_deployment.yaml
