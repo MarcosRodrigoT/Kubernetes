@@ -8,7 +8,14 @@
 # Chart default values:     https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/HEAD/jupyterhub/values.yaml
 # Available chart versions: https://hub.jupyter.org/helm-chart/
 
+hub:
+  db:
+    type: sqlite-memory
+
 singleuser:
+  storage:
+    dynamic:
+      storageClass: local-storage
   # Defines the default image
   image:
     name: jupyter/minimal-notebook

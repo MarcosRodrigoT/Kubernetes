@@ -1,9 +1,9 @@
 #!/bin/bash
 
-helm upgrade --cleanup-on-fail --install jupyterhub jupyterhub/jupyterhub --namespace default --create-namespace --values config.yaml
+kubectl apply -f local_storage.yaml --namespace jupyterhub
 
-echo -e "\nInitializing pods... Please wait\n"
+helm upgrade --cleanup-on-fail --install jupyterhub jupyterhub/jupyterhub --namespace jupyterhub --create-namespace --values config.yaml
 
-sleep 10s
+sleep 20s
 
-kubectl --namespace=default port-forward service/proxy-public 8080:http
+kubectl port-forward service/proxy-public 8080:http --namespace jupyterhub

@@ -1,4 +1,3 @@
-
 # Create cluster
 sudo kubeadm init --kubernetes-version=v1.30.2 --cri-socket unix:///var/run/cri-dockerd.sock --pod-network-cidr=192.168.0.0/16
 
@@ -15,11 +14,11 @@ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.
 
 # Print command to let other nodes joining
 join_command=$(sudo kubeadm token create --print-join-command)
-full_join_command="$join_command --cri-socket unix:///var/run/cri-dockerd.sock"
+full_join_command="sudo $join_command --cri-socket unix:///var/run/cri-dockerd.sock"
 echo
 echo
 echo
 echo "Cluster created successfully! You can join with other nodes by running this command:"
 echo
-echo "        $full_join_command"
+echo "$full_join_command"
 echo
