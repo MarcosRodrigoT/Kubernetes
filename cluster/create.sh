@@ -20,5 +20,14 @@ echo
 echo
 echo "Cluster created successfully! You can join with other nodes by running this command:"
 echo
-echo "$full_join_command"
+echo "        $full_join_command"
+echo
+echo
+echo "Check if your nodes have successfully joined the cluster:"
+echo
+echo "        kubectl get nodes"
+echo
+echo "(Optional) You should also set a worker label to each worker node:"
+echo
+echo "        kubectl label node <node-name> node-role.kubernetes.io/worker=worker"
 echo
